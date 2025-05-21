@@ -15,19 +15,20 @@ public class MutterDAO {
 	private final String JDBC_URL = "jdbc:mariadb://localhost:3306/dokotsubu";
     private final String DB_USER = "root";
     private final String DB_PASS = "insource.2015it";
-
+    
+    static {
+    	try {
+    		Class.forName("org.mariadb.jdbc.Driver");
+    	} catch (ClassNotFoundException e) {
+    		e.printStackTrace();
+    	}
+    }
+    
     public List<Mutter> findAll() {
         List<Mutter> list = new ArrayList<>();
-
-        try {
-            Class.forName("org.mariadb.jdbc.Driver");
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        }
         
-        try(Connection conn = DriverManager.getConnection(
-                JDBC_URL, DB_USER, DB_PASS)) {
-			
+        try (Connection conn = DriverManager.getConnection(JDBC_URL, DB_USER, DB_PASS)){
+        	
 			String sql = """
 					select id,name,text from mutter order by id desc
 					""";
@@ -54,12 +55,6 @@ public class MutterDAO {
     
     public boolean create(Mutter m) {
     	
-        try {
-            Class.forName("org.mariadb.jdbc.Driver");
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        }
-        
         try(Connection conn = DriverManager.getConnection(
                 JDBC_URL, DB_USER, DB_PASS)) {
 			
