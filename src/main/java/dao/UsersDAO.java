@@ -11,13 +11,14 @@ import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import org.mindrot.jbcrypt.BCrypt;
-
+// import org.mindrot.jbcrypt.BCrypt; // jBCryptは新しいハッシュ化ロジックに置き換わるため不要
 import model.User;
+import util.PasswordUtil; // 新しいPasswordUtilをインポート
 
 /**
  * ユーザー情報に関するデータベース操作を担当するDAOクラスです。
  * ユーザーの検索や新規作成処理を行います。
+ * パスワードはSHA-256とソルトを使用してハッシュ化されます。
  */
 public class UsersDAO {
     private static Properties dbProperties = new Properties();
@@ -49,12 +50,12 @@ public class UsersDAO {
      * 指定されたユーザー名を持つユーザーをデータベースから検索します。
      * 
      * @param username 検索するユーザー名。
-     * @return 見つかった場合はUserオブジェクト（ID、ユーザー名、ハッシュ化パスワードを含む）。
+     * @return 見つかった場合はUserオブジェクト（ID、ユーザー名、ハッシュ化パスワード、ソルトを含む）。
      *         見つからない場合やエラー発生時はnull。
      */
     public User findByUsername(String username) {
         User user = null;
-        String sql = "SELECT id, username, password_hash FROM users WHERE username = ?";
+        String sql = "SELECT id, username, password_hash, salt FROM users WHERE username = ?"; // saltも取得
         try (Connection conn = DriverManager.getConnection(JDBC_URL, DB_USER, DB_PASS);
              PreparedStatement pStmt = conn.prepareStatement(sql)) {
             
@@ -64,7 +65,8 @@ public class UsersDAO {
                     int id = rs.getInt("id");
                     String name = rs.getString("username"); 
                     String passwordHash = rs.getString("password_hash"); 
-                    user = new User(id, name, passwordHash); 
+                    String salt = rs.getString("salt"); // saltを取得
+                    user = new User(id, name, passwordHash, salt); // saltを含めてUserオブジェクトを生成
                 }
             }
         } catch (SQLException e) {
@@ -75,24 +77,36 @@ public class UsersDAO {
 
     /**
      * 新しいユーザーをデータベースに作成（登録）します。
-     * ユーザーのパスワードはjBCryptを使用してハッシュ化されて保存されます。
+     * ユーザーのパスワードはPasswordUtilを使用してハッシュ化され、ソルトと共に保存されます。
      * 
-     * @param user 作成するユーザーの情報（ユーザー名と平文パスワードがセットされていること）。
+     * @param user 作成するユーザーの情報（ユーザー名のみが使用される）。
+     * @param plainPassword ユーザーの平文パスワード。
      * @return ユーザー作成に成功した場合はtrue、失敗した場合はfalse。
      */
-    public boolean createUser(User user) {
-        String sql = "INSERT INTO users (username, password_hash) VALUES (?, ?)";
+    public boolean createUser(User user, String plainPassword) {
+        String sql = "INSERT INTO users (username, password_hash, salt) VALUES (?, ?, ?)";
         try (Connection conn = DriverManager.getConnection(JDBC_URL, DB_USER, DB_PASS);
              PreparedStatement pStmt = conn.prepareStatement(sql)) {
             
+            String salt = PasswordUtil.generateSalt();
+            String hashedPassword = PasswordUtil.hashPassword(plainPassword, salt);
+
+            if (hashedPassword == null) {
+                logger.log(Level.SEVERE, "Failed to hash password for user: " + user.getName() + ". User creation aborted.");
+                return false;
+            }
+
             pStmt.setString(1, user.getName());
-            String hashedPassword = BCrypt.hashpw(user.getPass(), BCrypt.gensalt());
             pStmt.setString(2, hashedPassword);
+            pStmt.setString(3, salt);
+            
             int result = pStmt.executeUpdate();
             if (result != 1) {
                 logger.log(Level.WARNING, "Failed to create user: " + user.getName() + ", affected rows: " + result);
                 return false;
             }
+            // 成功した場合、渡されたUserオブジェクトにID以外の永続化情報を設定することも検討できるが、
+            // このメソッドの責務はDBへの保存とし、呼び出し元で必要なら再度findByUsernameを呼ぶなどする。
             return true;
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Error creating user: " + user.getName(), e);

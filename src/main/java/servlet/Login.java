@@ -15,6 +15,7 @@ import model.User;
  * ユーザーのログイン処理を行うサーブレットです。
  * GETリクエストではログインページにフォワードし、
  * POSTリクエストでユーザー名とパスワードを受け取り認証処理を実行します。
+ * 認証には {@link LoginLogic} を使用し、パスワード検証は {@link util.PasswordUtil} に基づきます。
  */
 @WebServlet("/Login")
 public class Login extends HttpServlet {
@@ -31,14 +32,15 @@ public class Login extends HttpServlet {
      * @throws IOException GETリクエストの処理中に入出力エラーが発生した場合
      */
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-        // GETリクエストはログインページ (index.jsp) にフォワード
         request.getRequestDispatcher("/index.jsp").forward(request, response);
     }
 
     /**
      * POSTリクエストを処理します。
      * ユーザー名とパスワードを受け取り、{@link LoginLogic} を使用して認証を行います。
-     * 認証成功時には、ユーザー情報をセッションに保存します。
+     * 認証のために {@link LoginLogic} に渡すUserオブジェクトは、
+     * passwordHashフィールドに平文パスワードを一時的に格納して使用します。
+     * 認証成功時には、データベースから取得した完全なユーザー情報（ソルトやハッシュ化パスワードを含む）をセッションに保存します。
      * 認証結果に関わらず、loginResult.jspにフォワードします。
      * 
      * @param request  クライアントからのHttpServletRequestオブジェクト（ユーザー名とパスワードを含む）
@@ -49,23 +51,27 @@ public class Login extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         request.setCharacterEncoding("UTF-8");
         String name = request.getParameter("name");
-        String pass = request.getParameter("pass");
+        String pass = request.getParameter("pass"); // This is the plain text password from the form
         
-        User userToLogin = new User(name, pass);
+        // LoginLogicに渡すためのUserオブジェクト。
+        // Userモデルのコンストラクタ User(String name, String passwordHash, String salt) に合わせ、
+        // 平文パスワード(pass)を passwordHash フィールドに、salt は null として一時的に格納します。
+        // LoginLogic側では、この passwordHash フィールドから平文パスワードを取得して認証処理を行います。
+        User userAttempt = new User(name, pass, null); 
+        
         LoginLogic loginLogic = new LoginLogic();
-        User loginUser = loginLogic.execute(userToLogin); // Userオブジェクトまたはnullが返る
+        // loginLogic.execute は認証成功ならDBから取得した完全なUserオブジェクト(ID, name, hash, salt を含む)を返す
+        User authenticatedUser = loginLogic.execute(userAttempt); 
         
         HttpSession session = request.getSession();
-        if (loginUser != null) { // 認証成功
-            session.setAttribute("loginUser", loginUser); // DBから取得したUserオブジェクトをセッションに保存
+        if (authenticatedUser != null) { // 認証成功
+            session.setAttribute("loginUser", authenticatedUser); // DBから取得した完全なUserオブジェクトをセッションに保存
         } else {
-            // 認証失敗の場合、既存のloginUserセッション属性を削除することを検討できますが、
-            // loginResult.jspで loginUser が null かどうかで表示を切り替えるため、
-            // ここで明示的に削除しなくても問題ありません。
-            // session.removeAttribute("loginUser"); 
+            // 認証失敗
+            // loginResult.jspで authenticatedUser (セッションスコープのloginUser) がnullかどうかで表示を切り替える
+            session.removeAttribute("loginUser"); // 念のため既存のセッション情報をクリア
         }
         
-        // 認証結果ページへフォワード
         request.getRequestDispatcher("WEB-INF/jsp/loginResult.jsp").forward(request, response);
     }
 }

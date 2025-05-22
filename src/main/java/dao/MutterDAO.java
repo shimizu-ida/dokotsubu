@@ -7,6 +7,8 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp; // Timestampのインポート
+import java.time.LocalDateTime; // LocalDateTimeのインポート
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -17,6 +19,7 @@ import model.Mutter;
 
 /**
  * 投稿（つぶやき）に関するデータベース操作を担当するDAOクラスです。
+ * 作成日時 (`created_at`) の処理も含まれます。
  */
 public class MutterDAO {
     private static Properties dbProperties = new Properties();
@@ -45,13 +48,14 @@ public class MutterDAO {
     }
 
     /**
-     * すべての投稿（つぶやき）をデータベースから取得し、IDの降順でソートされたリストとして返します。
+     * すべての投稿（つぶやき）をデータベースから取得し、作成日時の降順でソートされたリストとして返します。
      * 
      * @return 投稿のリスト。取得に失敗した場合は空のリスト。
      */
     public List<Mutter> findAll() {
         List<Mutter> list = new ArrayList<>();
-        String sql = "SELECT id, name, text, user_id, image_path FROM mutter ORDER BY id DESC";
+        // created_at も取得し、ORDER BY created_at DESC に変更
+        String sql = "SELECT id, name, text, user_id, image_path, created_at FROM mutter ORDER BY created_at DESC";
         try (Connection conn = DriverManager.getConnection(JDBC_URL, DB_USER, DB_PASS);
              PreparedStatement pStmt = conn.prepareStatement(sql);
              ResultSet rs = pStmt.executeQuery()) {
@@ -62,7 +66,9 @@ public class MutterDAO {
                 String text = rs.getString("text");
                 int userId = rs.getInt("user_id");
                 String imagePath = rs.getString("image_path");
-                Mutter m = new Mutter(id, name, text, userId, imagePath);
+                Timestamp createdAt = rs.getTimestamp("created_at"); // created_at を取得
+                // MutterコンストラクタにcreatedAtを渡す
+                Mutter m = new Mutter(id, name, text, userId, imagePath, createdAt);
                 list.add(m);
             }
         } catch (SQLException e) {
@@ -73,12 +79,14 @@ public class MutterDAO {
 
     /**
      * 新しい投稿（つぶやき）をデータベースに作成（保存）します。
+     * 作成日時 (`created_at`) は現在のタイムスタンプで自動的に設定されます。
      * 
      * @param m 保存するMutterオブジェクト。ユーザー名、テキスト、ユーザーID、画像パスが含まれていること。
      * @return 保存に成功した場合はtrue、失敗した場合はfalse。
      */
     public boolean create(Mutter m) {
-        String sql = "INSERT INTO mutter(name, text, user_id, image_path) VALUES(?,?,?,?)";
+        // SQL文に created_at を追加し、VALUESに ? を追加
+        String sql = "INSERT INTO mutter(name, text, user_id, image_path, created_at) VALUES(?,?,?,?,?)";
         try (Connection conn = DriverManager.getConnection(JDBC_URL, DB_USER, DB_PASS);
              PreparedStatement pStmt = conn.prepareStatement(sql)) {
 
@@ -86,6 +94,7 @@ public class MutterDAO {
             pStmt.setString(2, m.getText());
             pStmt.setInt(3, m.getUserId());
             pStmt.setString(4, m.getImagePath());
+            pStmt.setTimestamp(5, Timestamp.valueOf(LocalDateTime.now())); // 現在日時を設定
 
             int res = pStmt.executeUpdate();
             if (res != 1) {
@@ -101,15 +110,15 @@ public class MutterDAO {
 
     /**
      * 指定された投稿IDとユーザーIDに一致する投稿をデータベースから検索します。
-     * これは、特定のユーザーが所有する特定の投稿を取得するために使用されます（例：編集時）。
      * 
      * @param mutterId 検索する投稿のID。
      * @param userId   投稿を所有するユーザーのID。
-     * @return 見つかった場合はMutterオブジェクト、見つからない場合やエラー時はnull。
+     * @return 見つかった場合はMutterオブジェクト（作成日時を含む）、見つからない場合やエラー時はnull。
      */
     public Mutter findByIdAndUserId(int mutterId, int userId) {
         Mutter mutter = null;
-        String sql = "SELECT id, name, text, user_id, image_path FROM mutter WHERE id = ? AND user_id = ?";
+        // created_at も取得するように変更
+        String sql = "SELECT id, name, text, user_id, image_path, created_at FROM mutter WHERE id = ? AND user_id = ?";
         try (Connection conn = DriverManager.getConnection(JDBC_URL, DB_USER, DB_PASS);
              PreparedStatement pStmt = conn.prepareStatement(sql)) {
 
@@ -122,7 +131,9 @@ public class MutterDAO {
                     String text = rs.getString("text");
                     int currentUserId = rs.getInt("user_id");
                     String imagePath = rs.getString("image_path");
-                    mutter = new Mutter(id, name, text, currentUserId, imagePath);
+                    Timestamp createdAt = rs.getTimestamp("created_at"); // created_at を取得
+                    // MutterコンストラクタにcreatedAtを渡す
+                    mutter = new Mutter(id, name, text, currentUserId, imagePath, createdAt);
                 }
             }
         } catch (SQLException e) {
@@ -133,7 +144,7 @@ public class MutterDAO {
 
     /**
      * 既存の投稿（つぶやき）のテキスト内容を更新します。
-     * 画像の更新はこのメソッドではサポートされていません。
+     * 作成日時 (`created_at`) および画像の更新はこのメソッドではサポートされていません。
      * 
      * @param m 更新するMutterオブジェクト。ID、更新後のテキスト、所有者ユーザーIDが含まれていること。
      * @return 更新に成功した場合はtrue、失敗した場合はfalse。

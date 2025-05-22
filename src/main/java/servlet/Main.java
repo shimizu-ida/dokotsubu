@@ -4,8 +4,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.UUID;
 
-import org.owasp.html.PolicyFactory; // OWASP Sanitizer
-import org.owasp.html.Sanitizers;   // OWASP Sanitizer
+// import org.owasp.html.PolicyFactory; // OWASP Sanitizer 削除
+// import org.owasp.html.Sanitizers;   // OWASP Sanitizer 削除
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.MultipartConfig;
@@ -20,6 +20,12 @@ import model.Mutter;
 import model.PostMutterLogic;
 import model.User;
 
+/**
+ * メイン画面の表示と投稿処理を行うサーブレットです。
+ * GETリクエストでメイン画面を表示し、POSTリクエストで新しい投稿を処理します。
+ * ファイルアップロード機能もサポートします。
+ * XSS対策はJSP側での表示時に行うことを想定しています。
+ */
 @WebServlet("/Main")
 @MultipartConfig
 public class Main extends HttpServlet {
@@ -40,7 +46,7 @@ public class Main extends HttpServlet {
 	
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		request.setCharacterEncoding("UTF-8");
-		String text = request.getParameter("text");
+		String text = request.getParameter("text"); // サニタイズ処理を削除し、元の値を使用
 		
 		HttpSession session = request.getSession();
 		User loginUser = (User) session.getAttribute("loginUser");
@@ -50,13 +56,9 @@ public class Main extends HttpServlet {
 			return;
 		}
 		
-		// XSS対策: HTMLサニタイズ (OWASP Java HTML Sanitizer)
-		// <a>, <p>, <br>, <li>, <ol>, <ul>, <h1>-<h6>, <b>, <i>, <u>, <s>, <blockquote>, <hr> などを許可するポリシーの例
-        // 必要に応じて .and(Sanitizers.IMAGES) や .and(Sanitizers.STYLES) も追加可能
-        PolicyFactory policy = Sanitizers.FORMATTING.and(Sanitizers.LINKS).and(Sanitizers.BLOCKS)
-                                .and(Sanitizers.TABLES); // Example: allow tables as well
-		String safeText = policy.sanitize(text);
-		
+		// XSS対策処理を削除
+		// String safeText = text; // 直接textを使用
+
 		String imagePath = null;
 		try {
 			Part filePart = request.getPart("image");
@@ -79,13 +81,14 @@ public class Main extends HttpServlet {
             request.setAttribute("errorMsg", "画像のアップロードに失敗しました: " + e.getMessage());
         }
 
-		if(safeText != null && safeText.length() != 0) {
-			Mutter mutter = new Mutter(loginUser.getName(), safeText, loginUser.getId(), imagePath);
+		// safeText を text に戻す
+		if(text != null && text.length() != 0) {
+			Mutter mutter = new Mutter(loginUser.getName(), text, loginUser.getId(), imagePath);
 			PostMutterLogic postMutterLogic = new PostMutterLogic();
 			postMutterLogic.execute(mutter);
 		} else if (imagePath == null) { 
 			request.setAttribute("errorMsg", "つぶやきが空です");
-		} else if (safeText == null || safeText.length() == 0) {
+		} else if (text == null || text.length() == 0) { // 画像のみ投稿の場合
             Mutter mutter = new Mutter(loginUser.getName(), "", loginUser.getId(), imagePath);
 			PostMutterLogic postMutterLogic = new PostMutterLogic();
 			postMutterLogic.execute(mutter);

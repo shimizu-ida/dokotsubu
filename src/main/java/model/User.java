@@ -4,14 +4,15 @@ import java.io.Serializable;
 
 /**
  * ユーザー情報を表すクラスです。
- * ログイン情報やユーザー識別のために使用されます。
+ * ユーザーID、ユーザー名、ハッシュ化されたパスワード、およびソルトを保持します。
  */
 public class User implements Serializable {
-    private static final long serialVersionUID = 1L; // SerializableのためのバージョンID
+    private static final long serialVersionUID = 1L;
 
     private int id;
     private String name;
-    private String pass; // 主にログイン時の一時的なパスワード保持、またはハッシュ化されたパスワードの格納に使用
+    private String passwordHash; // ハッシュ化されたパスワード
+    private String salt;         // パスワードハッシュ化に使用するソルト
 
     /**
      * デフォルトコンストラクタ。
@@ -20,27 +21,33 @@ public class User implements Serializable {
     }
 
     /**
-     * ユーザー名とパスワードを指定してUserオブジェクトを生成します。
-     * 主にログインフォームからのデータや新規ユーザー作成時に使用されます。
+     * ユーザー名、ハッシュ化パスワード、ソルトを指定してUserオブジェクトを生成します。
+     * 主に新規ユーザー作成時や、データベースからユーザー情報を読み込む際に使用されます。
+     * 
      * @param name ユーザー名
-     * @param pass パスワード（平文またはハッシュ化済み）
+     * @param passwordHash ハッシュ化されたパスワード
+     * @param salt パスワードハッシュ化に使用されたソルト
      */
-    public User(String name, String pass) {
+    public User(String name, String passwordHash, String salt) {
         this.name = name;
-        this.pass = pass;
+        this.passwordHash = passwordHash;
+        this.salt = salt;
     }
 
     /**
-     * ID、ユーザー名、パスワードを指定してUserオブジェクトを生成します。
-     * 主にデータベースからユーザー情報を取得した際に使用されます。
+     * ID、ユーザー名、ハッシュ化パスワード、ソルトを指定してUserオブジェクトを生成します。
+     * 主にデータベースから既存のユーザー情報を完全に読み込む際に使用されます。
+     * 
      * @param id ユーザーID
      * @param name ユーザー名
-     * @param pass パスワード（通常はハッシュ化済み）
+     * @param passwordHash ハッシュ化されたパスワード
+     * @param salt パスワードハッシュ化に使用されたソルト
      */
-    public User(int id, String name, String pass) {
+    public User(int id, String name, String passwordHash, String salt) {
         this.id = id;
         this.name = name;
-        this.pass = pass;
+        this.passwordHash = passwordHash;
+        this.salt = salt;
     }
 
     /**
@@ -76,18 +83,34 @@ public class User implements Serializable {
     }
 
     /**
-     * パスワード（またはパスワードハッシュ）を取得します。
-     * @return パスワード（またはパスワードハッシュ）
+     * ハッシュ化されたパスワードを取得します。
+     * @return ハッシュ化されたパスワード
      */
-    public String getPass() {
-        return pass;
+    public String getPasswordHash() {
+        return passwordHash;
     }
 
     /**
-     * パスワード（またはパスワードハッシュ）を設定します。
-     * @param pass 設定するパスワード（またはパスワードハッシュ）
+     * ハッシュ化されたパスワードを設定します。
+     * @param passwordHash 設定するハッシュ化されたパスワード
      */
-    public void setPass(String pass) {
-        this.pass = pass;
+    public void setPasswordHash(String passwordHash) {
+        this.passwordHash = passwordHash;
+    }
+
+    /**
+     * ソルトを取得します。
+     * @return ソルト
+     */
+    public String getSalt() {
+        return salt;
+    }
+
+    /**
+     * ソルトを設定します。
+     * @param salt 設定するソルト
+     */
+    public void setSalt(String salt) {
+        this.salt = salt;
     }
 }
