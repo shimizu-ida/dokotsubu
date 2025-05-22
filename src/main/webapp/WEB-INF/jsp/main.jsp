@@ -37,8 +37,8 @@
       <div class="card-body">
         <h6 class="card-subtitle mb-2 text-muted"><c:out value="${mutter.userName}" /></h6>
         <p class="card-text"><c:out value="${mutter.text}" /></p>
-        <c:if test="${not empty mutter.imagePath}">
-          <img src="${pageContext.request.contextPath}/${mutter.imagePath}" alt="投稿画像" class="img-fluid rounded mt-2" style="max-height: 200px;">
+        <c:if test="${mutter.imageData != null && mutter.imageData.length > 0}">
+          <img src="${pageContext.request.contextPath}/image?id=${mutter.id}" alt="投稿画像" class="img-fluid rounded mt-2" style="max-height: 200px;">
         </c:if>
       </div>
       <div class="card-footer bg-transparent border-top-0">

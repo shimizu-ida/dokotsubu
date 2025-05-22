@@ -51,7 +51,7 @@ public class MutterDAO {
      */
     public List<Mutter> findAll() {
         List<Mutter> list = new ArrayList<>();
-        String sql = "SELECT id, name, text, user_id, image_path FROM mutter ORDER BY id DESC";
+        String sql = "SELECT id, name, text, user_id, image_data FROM mutter ORDER BY id DESC";
         try (Connection conn = DriverManager.getConnection(JDBC_URL, DB_USER, DB_PASS);
              PreparedStatement pStmt = conn.prepareStatement(sql);
              ResultSet rs = pStmt.executeQuery()) {
@@ -61,8 +61,8 @@ public class MutterDAO {
                 String name = rs.getString("name");
                 String text = rs.getString("text");
                 int userId = rs.getInt("user_id");
-                String imagePath = rs.getString("image_path");
-                Mutter m = new Mutter(id, name, text, userId, imagePath);
+                byte[] imageData = rs.getBytes("image_data");
+                Mutter m = new Mutter(id, name, text, userId, imageData);
                 list.add(m);
             }
         } catch (SQLException e) {
@@ -78,14 +78,14 @@ public class MutterDAO {
      * @return 保存に成功した場合はtrue、失敗した場合はfalse。
      */
     public boolean create(Mutter m) {
-        String sql = "INSERT INTO mutter(name, text, user_id, image_path) VALUES(?,?,?,?)";
+        String sql = "INSERT INTO mutter(name, text, user_id, image_data) VALUES(?,?,?,?)";
         try (Connection conn = DriverManager.getConnection(JDBC_URL, DB_USER, DB_PASS);
              PreparedStatement pStmt = conn.prepareStatement(sql)) {
 
             pStmt.setString(1, m.getUserName());
             pStmt.setString(2, m.getText());
             pStmt.setInt(3, m.getUserId());
-            pStmt.setString(4, m.getImagePath());
+            pStmt.setBytes(4, m.getImageData());
 
             int res = pStmt.executeUpdate();
             if (res != 1) {
@@ -109,7 +109,7 @@ public class MutterDAO {
      */
     public Mutter findByIdAndUserId(int mutterId, int userId) {
         Mutter mutter = null;
-        String sql = "SELECT id, name, text, user_id, image_path FROM mutter WHERE id = ? AND user_id = ?";
+        String sql = "SELECT id, name, text, user_id, image_data FROM mutter WHERE id = ? AND user_id = ?";
         try (Connection conn = DriverManager.getConnection(JDBC_URL, DB_USER, DB_PASS);
              PreparedStatement pStmt = conn.prepareStatement(sql)) {
 
@@ -121,8 +121,8 @@ public class MutterDAO {
                     String name = rs.getString("name");
                     String text = rs.getString("text");
                     int currentUserId = rs.getInt("user_id");
-                    String imagePath = rs.getString("image_path");
-                    mutter = new Mutter(id, name, text, currentUserId, imagePath);
+                    byte[] imageData = rs.getBytes("image_data");
+                    mutter = new Mutter(id, name, text, currentUserId, imageData);
                 }
             }
         } catch (SQLException e) {

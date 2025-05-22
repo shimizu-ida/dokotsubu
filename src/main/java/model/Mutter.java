@@ -12,7 +12,7 @@ public class Mutter implements Serializable {
     private int id;
     private String userName;
     private String text;
-    private String imagePath; // 投稿に関連付けられた画像のパス
+    private byte[] imageData; // 投稿に関連付けられた画像のバイト配列
     private int userId;    // この投稿を行ったユーザーのID
 
     /**
@@ -32,7 +32,7 @@ public class Mutter implements Serializable {
         this.userName = userName;
         this.text = text;
         this.userId = userId;
-        this.imagePath = null; // 画像なしの場合はnull
+        this.imageData = null; // 画像なしの場合はnull
     }
 
     /**
@@ -41,13 +41,13 @@ public class Mutter implements Serializable {
      * @param userName 投稿者名
      * @param text 投稿内容
      * @param userId 投稿したユーザーのID
-     * @param imagePath 投稿画像のパス
+     * @param imageData 投稿画像のバイト配列
      */
-    public Mutter(String userName, String text, int userId, String imagePath) {
+    public Mutter(String userName, String text, int userId, byte[] imageData) {
         this.userName = userName;
         this.text = text;
         this.userId = userId;
-        this.imagePath = imagePath;
+        this.imageData = imageData;
     }
 
     /**
@@ -62,7 +62,7 @@ public class Mutter implements Serializable {
         this.userName = userName;
         this.text = text;
         this.userId = userId;
-        this.imagePath = null; // 画像なしの場合はnull
+        this.imageData = null; // 画像なしの場合はnull
     }
     
     /**
@@ -71,14 +71,14 @@ public class Mutter implements Serializable {
      * @param userName 投稿者名
      * @param text 投稿内容
      * @param userId 投稿したユーザーのID
-     * @param imagePath 投稿画像のパス
+     * @param imageData 投稿画像のバイト配列
      */
-    public Mutter(int id, String userName, String text, int userId, String imagePath) {
+    public Mutter(int id, String userName, String text, int userId, byte[] imageData) {
         this.id = id;
         this.userName = userName;
         this.text = text;
         this.userId = userId;
-        this.imagePath = imagePath;
+        this.imageData = imageData;
     }
 
     /**
@@ -106,19 +106,19 @@ public class Mutter implements Serializable {
     }
 
     /**
-     * 投稿画像のパスを取得します。
-     * @return 画像のパス。画像がない場合はnull。
+     * 投稿画像のバイト配列を取得します。
+     * @return 画像のバイト配列。画像がない場合はnull。
      */
-    public String getImagePath() {
-        return imagePath;
+    public byte[] getImageData() {
+        return imageData;
     }
 
     /**
-     * 投稿画像のパスを設定します。
-     * @param imagePath 設定する画像のパス
+     * 投稿画像のバイト配列を設定します。
+     * @param imageData 設定する画像のバイト配列
      */
-    public void setImagePath(String imagePath) {
-        this.imagePath = imagePath;
+    public void setImageData(byte[] imageData) {
+        this.imageData = imageData;
     }
 
     /**
