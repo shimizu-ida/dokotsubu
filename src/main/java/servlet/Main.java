@@ -1,8 +1,7 @@
 package servlet;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.UUID;
+import java.io.IOException; // File and UUID are no longer needed
+import java.io.InputStream; 
 
 import org.owasp.html.PolicyFactory; // OWASP Sanitizer
 import org.owasp.html.Sanitizers;   // OWASP Sanitizer
@@ -57,36 +56,27 @@ public class Main extends HttpServlet {
                                 .and(Sanitizers.TABLES); // Example: allow tables as well
 		String safeText = policy.sanitize(text);
 		
-		String imagePath = null;
+		byte[] imageData = null;
 		try {
 			Part filePart = request.getPart("image");
 			if (filePart != null && filePart.getSize() > 0 && filePart.getSubmittedFileName() != null && !filePart.getSubmittedFileName().isEmpty()) {
-				String originalFileName = filePart.getSubmittedFileName();
-                String cleanOriginalFileName = originalFileName.replaceAll("[^a-zA-Z0-9._-]", "_");
-				String uniqueFileName = UUID.randomUUID().toString() + "_" + cleanOriginalFileName;
-				
-				String uploadPath = getServletContext().getRealPath("/uploads/images");
-				File uploadDir = new File(uploadPath);
-				if (!uploadDir.exists()) {
-					uploadDir.mkdirs();
-				}
-				
-				filePart.write(uploadPath + File.separator + uniqueFileName);
-				imagePath = "uploads/images/" + uniqueFileName;
+				try (InputStream inputStream = filePart.getInputStream()) {
+                    imageData = inputStream.readAllBytes();
+                } // try-with-resources will close inputStream
 			}
-		} catch (ServletException e) {
+		} catch (ServletException | IOException e) { // Added IOException
             e.printStackTrace(); 
             request.setAttribute("errorMsg", "画像のアップロードに失敗しました: " + e.getMessage());
         }
 
 		if(safeText != null && safeText.length() != 0) {
-			Mutter mutter = new Mutter(loginUser.getName(), safeText, loginUser.getId(), imagePath);
+			Mutter mutter = new Mutter(loginUser.getName(), safeText, loginUser.getId(), imageData);
 			PostMutterLogic postMutterLogic = new PostMutterLogic();
 			postMutterLogic.execute(mutter);
-		} else if (imagePath == null) { 
+		} else if (imageData == null) { 
 			request.setAttribute("errorMsg", "つぶやきが空です");
 		} else if (safeText == null || safeText.length() == 0) {
-            Mutter mutter = new Mutter(loginUser.getName(), "", loginUser.getId(), imagePath);
+            Mutter mutter = new Mutter(loginUser.getName(), "", loginUser.getId(), imageData);
 			PostMutterLogic postMutterLogic = new PostMutterLogic();
 			postMutterLogic.execute(mutter);
         }
